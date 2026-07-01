@@ -1,68 +1,286 @@
-﻿<!DOCTYPE html>
-<html>
+<!DOCTYPE html>
+<html lang="th">
 <head>
-  <title>Monitor Dashboard</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IT Monitor Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
   <style>
-    body { font-family: Arial; margin: 20px; background: #f5f5f5; }
-    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .number { font-size: 32px; font-weight: bold; color: #007bff; }
-    .label { color: #666; font-size: 14px; margin-top: 10px; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #1a1a2e; color: #e0e0e0; }
+    .header { background: #16213e; padding: 15px 20px; border-bottom: 2px solid #0f3460; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { color: #4fc3f7; font-size: 22px; }
+    .header .sync-info { color: #888; font-size: 12px; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 15px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 15px; }
+    .stat-card { background: #16213e; border-radius: 8px; padding: 15px; border-left: 4px solid #4fc3f7; }
+    .stat-card .number { font-size: 28px; font-weight: bold; }
+    .stat-card .label { font-size: 12px; color: #888; margin-top: 4px; }
+    .blue { border-left-color: #4fc3f7; }
+    .blue .number { color: #4fc3f7; }
+    .green { border-left-color: #66bb6a; }
+    .green .number { color: #66bb6a; }
+    .orange { border-left-color: #ffa726; }
+    .orange .number { color: #ffa726; }
+    .red { border-left-color: #ef5350; }
+    .red .number { color: #ef5350; }
+    .filters { background: #16213e; padding: 12px; border-radius: 8px; margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .filters select, .filters input { background: #1a1a2e; color: #e0e0e0; border: 1px solid #333; padding: 8px 12px; border-radius: 6px; font-size: 13px; }
+    .filters input { flex: 1; min-width: 200px; }
+    .table-container { background: #16213e; border-radius: 8px; overflow: hidden; }
+    .table-header { padding: 12px 15px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+    .table-header h2 { color: #4fc3f7; font-size: 16px; }
+    .table-scroll { max-height: 500px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #0f3460; padding: 10px 12px; text-align: left; position: sticky; top: 0; color: #4fc3f7; font-size: 12px; }
+    td { padding: 8px 12px; border-bottom: 1px solid #222; }
+    tr:hover { background: #1e2a4a; cursor: pointer; }
+    .badge { padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+    .badge-online { background: #1b5e20; color: #66bb6a; }
+    .badge-offline { background: #b71c1c33; color: #ef5350; }
+    .badge-good { background: #1b5e2033; color: #66bb6a; }
+    .badge-warn { background: #e65100; color: #fff; }
+    .badge-bad { background: #b71c1c; color: #fff; }
+    .btn-remote { background: #0f3460; color: #4fc3f7; border: 1px solid #4fc3f7; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 4px; }
+    .btn-remote:hover { background: #4fc3f7; color: #1a1a2e; }
+    .disk-bar { width: 60px; height: 6px; background: #333; border-radius: 3px; display: inline-block; vertical-align: middle; margin-right: 5px; }
+    .disk-fill { height: 100%; border-radius: 3px; }
+    .loading { text-align: center; padding: 40px; color: #888; }
+    .export-btn { background: #4fc3f7; color: #1a1a2e; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; }
+    .export-btn:hover { background: #039be5; }
+    @media (max-width: 768px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .filters { flex-direction: column; }
+    }
   </style>
 </head>
 <body>
   <div id="root"></div>
-  
+
   <script type="text/babel">
-    function Dashboard() {
-      const [stats, setStats] = React.useState(null);
-      
-      React.useEffect(() => {
-        fetch('https://monitor-api.john-apichat.workers.dev/api/stats')
-          .then(r => r.json())
-          .then(d => setStats(d))
-          .catch(e => console.error(e));
-      }, []);
-      
-      if (!stats) return <div style={{textAlign: 'center', marginTop: '50px'}}>Loading...</div>;
-      
-      return (
-        <div>
-          <h1>📊 IT Monitor Dashboard</h1>
-          <div className="stats">
-            <div className="card">
-              <div className="number">{stats.total}</div>
-              <div className="label">Total Computers</div>
-            </div>
-            <div className="card">
-              <div className="number" style={{color: '#28a745'}}>{stats.online}</div>
-              <div className="label">Online</div>
-            </div>
-            <div className="card">
-              <div className="number" style={{color: '#dc3545'}}>{stats.critical}</div>
-              <div className="label">Critical</div>
-            </div>
-            <div className="card">
-              <div className="number" style={{color: '#fd7e14'}}>{stats.diskFull}</div>
-              <div className="label">Disk Full</div>
-            </div>
-            <div className="card">
-              <div className="number" style={{color: '#dc3545'}}>{stats.avOff}</div>
-              <div className="label">AV Off</div>
-            </div>
-            <div className="card">
-              <div className="number" style={{color: '#6c757d'}}>{stats.offline}</div>
-              <div className="label">Offline</div>
-            </div>
-          </div>
-        </div>
+    var API = 'https://monitor-api.john-apichat.workers.dev';
+
+    function App() {
+      var [stats, setStats] = React.useState(null);
+      var [computers, setComputers] = React.useState([]);
+      var [loading, setLoading] = React.useState(true);
+      var [search, setSearch] = React.useState('');
+      var [province, setProvince] = React.useState('all');
+      var [bu, setBu] = React.useState('all');
+      var [provinces, setProvinces] = React.useState([]);
+      var [bus, setBus] = React.useState([]);
+      var [lastSync, setLastSync] = React.useState('');
+
+      function fetchStats() {
+        fetch(API + '/api/stats')
+          .then(function(r) { return r.json(); })
+          .then(function(d) { setStats(d); })
+          .catch(function(e) { console.error(e); });
+      }
+
+      function fetchComputers() {
+        var query = '/api/computers?limit=200';
+        if (province !== 'all') query += '&province=' + province;
+        if (bu !== 'all') query += '&bu=' + bu;
+        if (search) query += '&search=' + search;
+
+        fetch(API + query)
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            var arr = d.data || [];
+            setComputers(arr);
+            setLoading(false);
+            setLastSync(new Date().toLocaleTimeString('th-TH'));
+
+            var provList = [];
+            var buList = [];
+            arr.forEach(function(c) {
+              if (c.Province && provList.indexOf(c.Province) === -1) provList.push(c.Province);
+              if (c.BU && buList.indexOf(c.BU) === -1) buList.push(c.BU);
+            });
+            setProvinces(provList.sort());
+            setBus(buList.sort());
+          })
+          .catch(function(e) { console.error(e); setLoading(false); });
+      }
+
+      React.useEffect(function() {
+        fetchStats();
+        fetchComputers();
+        var interval = setInterval(function() { fetchStats(); fetchComputers(); }, 60000);
+        return function() { clearInterval(interval); };
+      }, [province, bu, search]);
+
+      function isOnline(c) {
+        if (!c.LastSyncTH) return false;
+        return (new Date() - new Date(c.LastSyncTH)) < 7200000;
+      }
+
+      function getDiskPercent(d) {
+        if (!d) return 0;
+        var match = String(d).match(/(\d+)/);
+        return match ? parseInt(match[1]) : 0;
+      }
+
+      function getDiskColor(pct) {
+        if (pct > 90) return '#ef5350';
+        if (pct > 70) return '#ffa726';
+        return '#66bb6a';
+      }
+
+      function getScoreBadge(score) {
+        if (score === null || score === undefined) return 'badge';
+        if (score >= 70) return 'badge badge-good';
+        if (score >= 50) return 'badge badge-warn';
+        return 'badge badge-bad';
+      }
+
+      function openTV(id) {
+        if (id) window.open('teamviewer://control?device=' + id);
+      }
+
+      function openAD(id) {
+        if (id) window.open('anydesk://' + id);
+      }
+
+      function exportCSV() {
+        var csv = 'ComputerName,Province,BU,BranchID,Status,CPU,RAM,StabilityScore,DriveSpace,Antivirus1,IPAddress,LastSync\n';
+        computers.forEach(function(c) {
+          csv += [c.ComputerName, c.Province, c.BU, c.BranchID, isOnline(c) ? 'Online' : 'Offline', c.CPU, c.RAM, c.StabilityScore, c.DriveSpace, c.Antivirus1, c.IPAddress, c.LastSyncTH].join(',') + '\n';
+        });
+        var blob = new Blob([csv], { type: 'text/csv' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'computers_' + new Date().toISOString().slice(0,10) + '.csv';
+        a.click();
+      }
+
+      if (!stats) return React.createElement('div', { className: 'loading' }, 'Loading...');
+
+      return React.createElement('div', null,
+        React.createElement('div', { className: 'header' },
+          React.createElement('h1', null, 'IT Monitor Dashboard'),
+          React.createElement('span', { className: 'sync-info' }, 'Last sync: ' + lastSync + ' | Auto refresh: 60s')
+        ),
+        React.createElement('div', { className: 'container' },
+          React.createElement('div', { className: 'stats-grid' },
+            React.createElement('div', { className: 'stat-card blue' },
+              React.createElement('div', { className: 'number' }, stats.total),
+              React.createElement('div', { className: 'label' }, 'Total Computers')
+            ),
+            React.createElement('div', { className: 'stat-card green' },
+              React.createElement('div', { className: 'number' }, stats.online),
+              React.createElement('div', { className: 'label' }, 'Online')
+            ),
+            React.createElement('div', { className: 'stat-card orange' },
+              React.createElement('div', { className: 'number' }, stats.offline),
+              React.createElement('div', { className: 'label' }, 'Offline')
+            ),
+            React.createElement('div', { className: 'stat-card red' },
+              React.createElement('div', { className: 'number' }, stats.critical),
+              React.createElement('div', { className: 'label' }, 'Critical')
+            ),
+            React.createElement('div', { className: 'stat-card orange' },
+              React.createElement('div', { className: 'number' }, stats.diskFull),
+              React.createElement('div', { className: 'label' }, 'Disk Full')
+            ),
+            React.createElement('div', { className: 'stat-card red' },
+              React.createElement('div', { className: 'number' }, stats.avOff),
+              React.createElement('div', { className: 'label' }, 'AV Off')
+            ),
+            React.createElement('div', { className: 'stat-card red' },
+              React.createElement('div', { className: 'number' }, stats.fwOff),
+              React.createElement('div', { className: 'label' }, 'Firewall Off')
+            ),
+            React.createElement('div', { className: 'stat-card orange' },
+              React.createElement('div', { className: 'number' }, stats.pendingReboot),
+              React.createElement('div', { className: 'label' }, 'Pending Reboot')
+            )
+          ),
+
+          React.createElement('div', { className: 'filters' },
+            React.createElement('select', { value: province, onChange: function(e) { setProvince(e.target.value); } },
+              React.createElement('option', { value: 'all' }, 'All Provinces'),
+              provinces.map(function(p) { return React.createElement('option', { key: p, value: p }, p); })
+            ),
+            React.createElement('select', { value: bu, onChange: function(e) { setBu(e.target.value); } },
+              React.createElement('option', { value: 'all' }, 'All BU'),
+              bus.map(function(b) { return React.createElement('option', { key: b, value: b }, b); })
+            ),
+            React.createElement('input', {
+              placeholder: 'Search computer name...',
+              value: search,
+              onChange: function(e) { setSearch(e.target.value); }
+            })
+          ),
+
+          React.createElement('div', { className: 'table-container' },
+            React.createElement('div', { className: 'table-header' },
+              React.createElement('h2', null, 'Computers (' + computers.length + ')'),
+              React.createElement('button', { className: 'export-btn', onClick: exportCSV }, 'Export CSV')
+            ),
+            React.createElement('div', { className: 'table-scroll' },
+              React.createElement('table', null,
+                React.createElement('thead', null,
+                  React.createElement('tr', null,
+                    React.createElement('th', null, 'Computer'),
+                    React.createElement('th', null, 'Province'),
+                    React.createElement('th', null, 'BU'),
+                    React.createElement('th', null, 'Status'),
+                    React.createElement('th', null, 'Score'),
+                    React.createElement('th', null, 'Disk'),
+                    React.createElement('th', null, 'AV'),
+                    React.createElement('th', null, 'FW'),
+                    React.createElement('th', null, 'IP'),
+                    React.createElement('th', null, 'Remote')
+                  )
+                ),
+                React.createElement('tbody', null,
+                  loading
+                    ? React.createElement('tr', null, React.createElement('td', { colSpan: 10, style: { textAlign: 'center' } }, 'Loading...'))
+                    : computers.map(function(c, i) {
+                        var online = isOnline(c);
+                        var diskPct = getDiskPercent(c.DriveSpace);
+                        return React.createElement('tr', { key: c.id || i },
+                          React.createElement('td', { style: { fontWeight: 'bold', color: '#4fc3f7' } }, c.ComputerName || '-'),
+                          React.createElement('td', null, c.Province || '-'),
+                          React.createElement('td', null, c.BU || '-'),
+                          React.createElement('td', null,
+                            React.createElement('span', { className: online ? 'badge badge-online' : 'badge badge-offline' }, online ? 'Online' : 'Offline')
+                          ),
+                          React.createElement('td', null,
+                            React.createElement('span', { className: getScoreBadge(c.StabilityScore) }, c.StabilityScore !== null ? c.StabilityScore : '-')
+                          ),
+                          React.createElement('td', null,
+                            React.createElement('span', { className: 'disk-bar' },
+                              React.createElement('span', { className: 'disk-fill', style: { width: diskPct + '%', background: getDiskColor(diskPct) } })
+                            ),
+                            React.createElement('span', { style: { fontSize: '11px' } }, diskPct + '%')
+                          ),
+                          React.createElement('td', null,
+                            React.createElement('span', { style: { color: c.Antivirus1 ? '#66bb6a' : '#ef5350' } }, c.Antivirus1 ? 'On' : 'Off')
+                          ),
+                          React.createElement('td', null,
+                            React.createElement('span', { style: { color: c.Firewall === 'On' || c.Firewall === true ? '#66bb6a' : '#ef5350' } }, c.Firewall || '-')
+                          ),
+                          React.createElement('td', { style: { fontSize: '11px' } }, c.IPAddress || '-'),
+                          React.createElement('td', null,
+                            c.TeamViewerID ? React.createElement('button', { className: 'btn-remote', onClick: function() { openTV(c.TeamViewerID); } }, 'TV') : null,
+                            c.AnyDeskID ? React.createElement('button', { className: 'btn-remote', onClick: function() { openAD(c.AnyDeskID); } }, 'AD') : null
+                          )
+                        );
+                      })
+                )
+              )
+            )
+          )
+        )
       );
     }
-    
-    ReactDOM.render(<Dashboard />, document.getElementById('root'));
+
+    ReactDOM.render(React.createElement(App), document.getElementById('root'));
   </script>
 </body>
 </html>
