@@ -7,12 +7,27 @@
   <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Arial, sans-serif; background: #1a1a2e; color: #e0e0e0; }
+    .login-page { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    .login-box { background: #16213e; padding: 40px; border-radius: 12px; width: 360px; border: 1px solid #0f3460; }
+    .login-box h1 { color: #4fc3f7; text-align: center; margin-bottom: 8px; font-size: 22px; }
+    .login-box p { color: #888; text-align: center; margin-bottom: 25px; font-size: 13px; }
+    .login-box input { width: 100%; padding: 12px; margin-bottom: 12px; background: #1a1a2e; border: 1px solid #333; border-radius: 6px; color: #e0e0e0; font-size: 14px; }
+    .login-box input:focus { outline: none; border-color: #4fc3f7; }
+    .login-box button { width: 100%; padding: 12px; background: #4fc3f7; color: #1a1a2e; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; }
+    .login-box button:hover { background: #039be5; }
+    .login-box button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .login-error { color: #ef5350; font-size: 13px; text-align: center; margin-bottom: 10px; }
     .header { background: #16213e; padding: 15px 20px; border-bottom: 2px solid #0f3460; display: flex; justify-content: space-between; align-items: center; }
     .header h1 { color: #4fc3f7; font-size: 22px; }
+    .header-right { display: flex; align-items: center; gap: 15px; }
     .header .sync-info { color: #888; font-size: 12px; }
+    .header .user-info { color: #66bb6a; font-size: 13px; }
+    .btn-logout { background: #ef5350; color: #fff; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+    .btn-logout:hover { background: #c62828; }
     .container { max-width: 1400px; margin: 0 auto; padding: 15px; }
     .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 15px; }
     .stat-card { background: #16213e; border-radius: 8px; padding: 15px; border-left: 4px solid #4fc3f7; }
@@ -61,8 +76,66 @@
 
   <script type="text/babel">
     var API = 'https://monitor-api.john-apichat.workers.dev';
+    var SUPABASE_URL = 'https://xabvhfoosmqyrbkohmof.supabase.co';
+    var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhhYnZoZm9vc21xeXJia29obW9mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3NDg2NDAsImV4cCI6MjA5MzMyNDY0MH0.12i8J50IPfEkTcq7xFJz54rA4MLARcHOsTtibi1iG2s';
 
-    function App() {
+    var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    function LoginPage(props) {
+      var [email, setEmail] = React.useState('');
+      var [password, setPassword] = React.useState('');
+      var [error, setError] = React.useState('');
+      var [loading, setLoading] = React.useState(false);
+
+      function handleLogin() {
+        setLoading(true);
+        setError('');
+        supabase.auth.signInWithPassword({ email: email, password: password })
+          .then(function(result) {
+            setLoading(false);
+            if (result.error) {
+              setError('Email or Password incorrect');
+            } else {
+              props.onLogin(result.data.user);
+            }
+          })
+          .catch(function(e) {
+            setLoading(false);
+            setError('Login failed');
+          });
+      }
+
+      function handleKeyPress(e) {
+        if (e.key === 'Enter') handleLogin();
+      }
+
+      return React.createElement('div', { className: 'login-page' },
+        React.createElement('div', { className: 'login-box' },
+          React.createElement('h1', null, 'IT Monitor System'),
+          React.createElement('p', null, 'Login to access dashboard'),
+          error ? React.createElement('div', { className: 'login-error' }, error) : null,
+          React.createElement('input', {
+            type: 'email',
+            placeholder: 'Email',
+            value: email,
+            onChange: function(e) { setEmail(e.target.value); },
+            onKeyPress: handleKeyPress
+          }),
+          React.createElement('input', {
+            type: 'password',
+            placeholder: 'Password',
+            value: password,
+            onChange: function(e) { setPassword(e.target.value); },
+            onKeyPress: handleKeyPress
+          }),
+          React.createElement('button', { onClick: handleLogin, disabled: loading },
+            loading ? 'Logging in...' : 'Login'
+          )
+        )
+      );
+    }
+
+    function Dashboard(props) {
       var [stats, setStats] = React.useState(null);
       var [computers, setComputers] = React.useState([]);
       var [loading, setLoading] = React.useState(true);
@@ -113,6 +186,12 @@
         return function() { clearInterval(interval); };
       }, [province, bu, search]);
 
+      function handleLogout() {
+        supabase.auth.signOut().then(function() {
+          props.onLogout();
+        });
+      }
+
       function isOnline(c) {
         if (!c.LastSyncTH) return false;
         return (new Date() - new Date(c.LastSyncTH)) < 7200000;
@@ -137,13 +216,8 @@
         return 'badge badge-bad';
       }
 
-      function openTV(id) {
-        if (id) window.open('teamviewer://control?device=' + id);
-      }
-
-      function openAD(id) {
-        if (id) window.open('anydesk://' + id);
-      }
+      function openTV(id) { if (id) window.open('teamviewer://control?device=' + id); }
+      function openAD(id) { if (id) window.open('anydesk://' + id); }
 
       function exportCSV() {
         var csv = 'ComputerName,Province,BU,BranchID,Status,CPU,RAM,StabilityScore,DriveSpace,Antivirus1,IPAddress,LastSync\n';
@@ -162,7 +236,11 @@
       return React.createElement('div', null,
         React.createElement('div', { className: 'header' },
           React.createElement('h1', null, 'IT Monitor Dashboard'),
-          React.createElement('span', { className: 'sync-info' }, 'Last sync: ' + lastSync + ' | Auto refresh: 60s')
+          React.createElement('div', { className: 'header-right' },
+            React.createElement('span', { className: 'sync-info' }, 'Refresh: 60s'),
+            React.createElement('span', { className: 'user-info' }, props.user.email),
+            React.createElement('button', { className: 'btn-logout', onClick: handleLogout }, 'Logout')
+          )
         ),
         React.createElement('div', { className: 'container' },
           React.createElement('div', { className: 'stats-grid' },
@@ -278,6 +356,33 @@
           )
         )
       );
+    }
+
+    function App() {
+      var [user, setUser] = React.useState(null);
+      var [checking, setChecking] = React.useState(true);
+
+      React.useEffect(function() {
+        supabase.auth.getSession().then(function(result) {
+          if (result.data.session) {
+            setUser(result.data.session.user);
+          }
+          setChecking(false);
+        });
+      }, []);
+
+      if (checking) return React.createElement('div', { className: 'loading' }, 'Checking session...');
+
+      if (!user) {
+        return React.createElement(LoginPage, {
+          onLogin: function(u) { setUser(u); }
+        });
+      }
+
+      return React.createElement(Dashboard, {
+        user: user,
+        onLogout: function() { setUser(null); }
+      });
     }
 
     ReactDOM.render(React.createElement(App), document.getElementById('root'));
